@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Game.h"
+#include <vector>
 
 Game::Game()
 {
@@ -15,17 +16,26 @@ void Game::Reset()
 	paddle.x_position = 32;
 	paddle.y_position = 30;
 
+	endState = 0;
+
 	ball.visage = 'O';
 	ball.color = ConsoleColor::Cyan;
 	ResetBall();
 
+	bricks.clear();
+
 	// TODO #2 - Add this brick and 4 more bricks to the vector
-	brick.width = 10;
-	brick.height = 2;
-	brick.x_position = 0;
-	brick.y_position = 5;
-	brick.doubleThick = true;
-	brick.color = ConsoleColor::DarkGreen;
+	for (int i = 0; i < 5; i++)
+	{
+		Box brick;
+		brick.width = 10;
+		brick.height = 2;
+		brick.x_position = 15 * i;
+		brick.y_position = 5;
+		brick.doubleThick = true;
+		brick.color = ConsoleColor::DarkGreen;
+		bricks.push_back(brick);
+	}
 }
 
 void Game::ResetBall()
@@ -68,8 +78,16 @@ void Game::Render() const
 	paddle.Draw();
 	ball.Draw();
 
+	Console::SetCursorPosition(23, 22);
+	if (endState == 1)
+		std::cout << "You win! Press 'R' to play again";
+	else if (endState == 2)
+		std::cout << "You lose! Press 'R' to play again";
+	Console::SetCursorPosition(0, 0);
+
 	// TODO #3 - Update render to render all bricks
-	brick.Draw();
+	for (int i = 0; i < bricks.size(); ++i)
+		bricks[i].Draw();
 
 	Console::Lock(false);
 }
@@ -77,17 +95,29 @@ void Game::Render() const
 void Game::CheckCollision()
 {
 	// TODO #4 - Update collision to check all bricks
-	if (brick.Contains(ball.x_position + ball.x_velocity, ball.y_position + ball.y_velocity))
+	auto brick = bricks.begin();
+	while (brick != bricks.end())
 	{
-		brick.color = ConsoleColor(brick.color - 1);
-		ball.y_velocity *= -1;
+		if (brick->Contains(ball.x_position + ball.x_velocity, ball.y_position + ball.y_velocity))
+		{
+			brick->color = ConsoleColor(brick->color - 1);
+			ball.y_velocity *= -1;
 
-		// TODO #5 - If the ball hits the same brick 3 times (color == black), remove it from the vector
-
+			// TODO #5 - If the ball hits the same brick 3 times (color == black), remove it from the vector
+			if (brick->color == ConsoleColor(Black - 1)) {
+				brick = bricks.erase(brick);
+				continue;
+			}
+		}
+		++brick;
 	}
 
 	// TODO #6 - If no bricks remain, pause ball and display victory text with R to reset
-
+	if (bricks.empty()) {
+		ball.moving = false;
+		endState = 1;
+	}
+		
 
 	if (paddle.Contains(ball.x_position + ball.x_velocity, ball.y_velocity + ball.y_position))
 	{
@@ -95,4 +125,8 @@ void Game::CheckCollision()
 	}
 
 	// TODO #7 - If ball touches bottom of window, pause ball and display defeat text with R to reset
+	if (ball.y_position >= WINDOW_HEIGHT) {
+		ball.moving = false;
+		endState = 2;
+	}
 }
